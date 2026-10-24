@@ -1,0 +1,22 @@
+# never published
+secrets/
+backup/
+logs/
+.venv/
+*.sqlite
+*.log
+# separate repos (martinseeger2002/firmware and device-ui, branch arcade)
+firmware/
+device-ui/
+# downloads and build output
+vendor-src/
+fonts-src/
+release/
+hosttest/build/
+hosttest/shots/
+hosttest/vectors
+hosttest/client
+hosttest/render
+hosttest/*.png
+__pycache__/
+.pytest_cache/

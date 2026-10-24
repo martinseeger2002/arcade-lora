@@ -1,0 +1,551 @@
+<title>Arcade T-Deck</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&family=Barlow+Semi+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: the device sits on a quiet bench; the screen inside wears the arcade's own skin tokens (brand.py + base_css.css). */
+:root{
+  --page:#ecebe7; --page-fg:#24231f; --page-muted:#6c6a63; --page-line:#d7d4cc; --chip:#fbfaf7;
+  --body-font:"Roboto",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Roboto Mono",ui-monospace,Menlo,Consolas,monospace;
+  --display:"Barlow Semi Condensed","Roboto",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --page:#151513; --page-fg:#e9e7e1; --page-muted:#99968e; --page-line:#2d2c28; --chip:#1d1c19; color-scheme:dark}}
+:root[data-theme="dark"]{--page:#151513; --page-fg:#e9e7e1; --page-muted:#99968e; --page-line:#2d2c28; --chip:#1d1c19; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--page);color:var(--page-fg);font:14px/1.5 var(--body-font);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bench{max-width:1060px;margin:0 auto;padding-block:22px 40px;display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:28px;align-items:start}
+@media (max-width:860px){.bench{grid-template-columns:minmax(0,1fr)}}
+h1{font:600 1.7rem/1.1 var(--display);letter-spacing:.01em;margin:0 0 4px;text-wrap:balance}
+.sub{color:var(--page-muted);margin:0 0 14px;max-width:60ch}
+.stage{min-width:0}
+.fit{width:100%;position:relative}
+.scaler{transform-origin:top left;width:360px}
+aside{display:grid;gap:18px;min-width:0}
+aside h2{font:600 .78rem/1 var(--display);text-transform:uppercase;letter-spacing:.12em;color:var(--page-muted);margin:0 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font:500 .85rem var(--body-font);padding:6px 11px;border-radius:999px;border:1px solid var(--page-line);
+  background:var(--chip);color:var(--page-fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chips button[aria-pressed="true"]{border-color:var(--page-fg);box-shadow:inset 0 0 0 1px var(--page-fg)}
+.chips button:focus-visible{outline:2px solid var(--page-fg);outline-offset:2px}
+.sw{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.keys{margin:0;padding:0;list-style:none;display:grid;gap:5px;font-size:.86rem}
+.keys kbd{font:500 .74rem var(--mono);border:1px solid var(--page-line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--chip)}
+.note{font-size:.84rem;color:var(--page-muted);margin:0}
+.toggle{display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer}
+.toggle input{accent-color:var(--page-fg);width:16px;height:16px}
+
+/* ---- the T-Deck Plus body ---- */
+.deck{width:360px;background:linear-gradient(160deg,#3a3936,#22211f 60%,#1b1a18);border-radius:26px 26px 34px 34px;
+  padding:16px 20px 18px;box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 18px 40px rgba(0,0,0,.28),0 2px 6px rgba(0,0,0,.2);position:relative}
+.deck::before{content:"LILYGO  T-DECK PLUS";position:absolute;top:5px;left:0;right:0;text-align:center;font:500 7px/1 var(--mono);letter-spacing:.3em;color:#8d8a82}
+.glass{background:#050505;border-radius:8px;padding:8px;box-shadow:inset 0 0 0 1px #000,0 0 0 1px #47453f}
+.ball{width:26px;height:26px;border-radius:50%;margin:10px auto 8px;background:radial-gradient(circle at 35% 30%,#f4f2ec,#a9a59b 55%,#6f6b62);
+  box-shadow:0 0 0 3px #2b2a27,0 0 0 4px #4a4842;cursor:pointer}
+.kb{display:grid;gap:5px}
+.row{display:flex;gap:4px;justify-content:center}
+.k{flex:1;height:27px;border-radius:5px;border:0;background:linear-gradient(#3d3c38,#2c2b28);color:#e9e6dd;
+  font:500 10px/1 var(--body-font);box-shadow:0 1px 0 #55534d inset,0 2px 0 #121110;cursor:pointer;padding:0}
+.k small{display:block;font-size:6px;color:#9c988f;margin-bottom:1px}
+.k.w2{flex:2.2}.k.w15{flex:1.4}
+.k:active{transform:translateY(1px);box-shadow:0 0 0 #121110}
+
+/* ---- the screen: 320 x 240, arcade skin tokens ---- */
+.scr{width:320px;height:240px;overflow:hidden;position:relative;background:var(--bg);color:var(--fg);
+  font:11px/1.35 var(--body-font);display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+.scr[data-skin="dogecoin-light"]{--bg:#faf8f4;--panel:#fffdf9;--fg:#1b1a17;--muted:#6b665c;--line:#e2ddd3;--accent:#b8860b;--accent-fg:#fff;--ok:#2d7a4f;--warn:#a8620a;--bad:#a83232;--code:#f2eee6;--sent:#2f7cf6;--sent-fg:#fff;--net-test:#22a35a;--net-main:#22a35a;--net-doge:#d4a106;--net-ltc:#345d9d}
+.scr[data-skin="dogecoin-dark"]{--bg:#141310;--panel:#1a1815;--fg:#ece8e0;--muted:#9b948a;--line:#2c2a25;--accent:#d9a520;--accent-fg:#141310;--ok:#5bbd85;--warn:#d99a3e;--bad:#e07070;--code:#1d1b17;--sent:#0b84ff;--sent-fg:#fff;--net-test:#22a35a;--net-main:#22a35a;--net-doge:#d4a106;--net-ltc:#7fa3dc}
+.scr[data-skin="pepecoin-light"]{--bg:#f4f8f1;--panel:#fbfdf9;--fg:#14200f;--muted:#5a6a52;--line:#d6e3cd;--accent:#2f8f3a;--accent-fg:#fff;--ok:#1f7a5c;--warn:#a8620a;--bad:#a83232;--code:#e9f2e3;--sent:#2f7cf6;--sent-fg:#fff;--net-test:#22a35a;--net-main:#22a35a;--net-doge:#d4a106;--net-ltc:#345d9d}
+.scr[data-skin="pepecoin-dark"]{--bg:#0d140e;--panel:#131c14;--fg:#e4efe0;--muted:#8ea486;--line:#223024;--accent:#5fcb5a;--accent-fg:#0d140e;--ok:#4cc29a;--warn:#d99a3e;--bad:#e07070;--code:#162017;--sent:#0b84ff;--sent-fg:#fff;--net-test:#22a35a;--net-main:#22a35a;--net-doge:#d4a106;--net-ltc:#7fa3dc}
+.scr[data-skin="litecoin-light"]{--bg:#f3f5f9;--panel:#fbfcfe;--fg:#141a26;--muted:#5b6475;--line:#d5dbe6;--accent:#345d9d;--accent-fg:#fff;--ok:#1f7a5c;--warn:#a8620a;--bad:#a83232;--code:#e8edf5;--sent:#2f7cf6;--sent-fg:#fff;--net-test:#22a35a;--net-main:#22a35a;--net-doge:#d4a106;--net-ltc:#345d9d}
+.scr[data-skin="litecoin-dark"]{--bg:#0d1118;--panel:#131924;--fg:#e3e8f1;--muted:#8b95a8;--line:#222b3a;--accent:#7fa3dc;--accent-fg:#0d1118;--ok:#4cc29a;--warn:#d99a3e;--bad:#e07070;--code:#161d2a;--sent:#0b84ff;--sent-fg:#fff;--net-test:#22a35a;--net-main:#22a35a;--net-doge:#d4a106;--net-ltc:#7fa3dc}
+
+.stat{height:15px;flex:none;display:flex;align-items:center;gap:6px;padding:0 6px;font-size:9px;color:var(--muted);background:var(--panel);border-bottom:1px solid var(--line)}
+.stat .me{color:var(--fg);font-weight:500}
+.stat .sp{flex:1}
+.bars{display:inline-flex;align-items:flex-end;gap:1px;height:8px}
+.bars i{width:2px;background:var(--muted);opacity:.35}
+.bars i.on{opacity:1;background:var(--ok)}
+.bat{width:15px;height:7px;border:1px solid var(--muted);border-radius:2px;position:relative;padding:1px}
+.bat::after{content:"";position:absolute;right:-3px;top:1.5px;width:1.5px;height:3px;background:var(--muted)}
+.bat b{display:block;height:100%;background:var(--ok);border-radius:1px}
+.gwdot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.gwdot.off{background:var(--warn)}
+.gwdot.ble{background:var(--sent)}
+
+.navbar{height:23px;flex:none;display:flex;align-items:center;gap:2px;padding:0 4px;background:var(--panel);border-bottom:1px solid var(--line)}
+.logo{width:14px;height:14px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:700 8px/1 var(--body-font);margin-right:3px}
+.navbar a{padding:3px 7px;border-radius:5px;color:var(--muted);font-size:10.5px;cursor:pointer;text-decoration:none;position:relative}
+.navbar a.on{background:var(--accent);color:var(--accent-fg)}
+.navbar a .dot{position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:var(--bad)}
+
+.view{flex:1;overflow:hidden;position:relative}
+.pane{position:absolute;inset:0;overflow-y:auto;padding:6px 7px 8px;display:flex;flex-direction:column;gap:5px;scrollbar-width:none}
+.pane::-webkit-scrollbar{display:none}
+.slide-in{animation:slin .16s ease-out}
+@keyframes slin{from{transform:translateX(14px);opacity:.3}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.slide-in{animation:none}}
+
+.f{outline:none;cursor:pointer}
+.f.focus{box-shadow:0 0 0 1.5px var(--accent)}
+.card{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:6px 8px}
+.chain{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2px 7px}
+.chain .coin{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 9px/1 var(--body-font);color:#fff;grid-row:span 2}
+.chain .lbl{font-weight:500}
+.chain .amt{font:500 12px/1.2 var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.chain .sub2{color:var(--muted);font-size:9px}
+.chain .fiat{color:var(--muted);font:400 9px var(--mono);text-align:right}
+.tag{font-size:7.5px;text-transform:uppercase;letter-spacing:.06em;padding:0 4px;border-radius:3px;font-weight:500;vertical-align:1px}
+.tag.testnet{background:color-mix(in srgb,var(--net-test) 20%,transparent);color:var(--net-test)}
+.tag.mainnet{background:color-mix(in srgb,var(--net-main) 22%,transparent);color:var(--net-main)}
+.tag.dogecoin{background:color-mix(in srgb,var(--net-doge) 24%,transparent);color:var(--net-doge)}
+.tag.litecoin{background:color-mix(in srgb,var(--net-ltc) 22%,transparent);color:var(--net-ltc)}
+.tag.warn{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
+.tag.ok{background:color-mix(in srgb,var(--ok) 20%,transparent);color:var(--ok)}
+.tag.ble{background:color-mix(in srgb,var(--sent) 20%,transparent);color:var(--sent)}
+.btnrow{display:flex;gap:5px}
+.btn{flex:1;text-align:center;padding:5px 8px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);font-weight:500;font-size:10.5px}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.dis{opacity:.4}
+.sect{font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:3px 1px -1px}
+.act{display:flex;align-items:center;gap:6px;padding:3px 2px;border-bottom:1px solid var(--line)}
+.act:last-child{border-bottom:0}
+.act .who{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act .v{font:500 10px var(--mono);font-variant-numeric:tabular-nums}
+.v.in{color:var(--ok)} .v.out{color:var(--fg)}
+.when{color:var(--muted);font-size:8.5px}
+.av{width:20px;height:20px;flex:none;border-radius:50%;display:grid;place-items:center;font:700 9px/1 var(--body-font);color:#fff}
+.av.sm{width:15px;height:15px;font-size:7.5px}
+.person{display:flex;align-items:center;gap:7px;padding:4px 5px;border-radius:7px}
+.person .n{flex:1;min-width:0}
+.person .n b{font-weight:500;display:block}
+.person .n span{color:var(--muted);font-size:9px}
+.field{display:grid;gap:2px}
+.field label{font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.inp{border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:4px 6px;min-height:21px;font-size:11px;display:flex;align-items:center;gap:4px}
+.inp.mono{font-family:var(--mono)}
+.inp .ph{color:var(--muted)}
+.inp.focus{box-shadow:none;border-color:var(--accent)}
+.caret{display:inline-block;width:1px;height:12px;background:var(--accent);animation:blink 1s steps(1) infinite;vertical-align:-2px}
+@keyframes blink{50%{opacity:0}}
+.suggest{display:flex;gap:4px;flex-wrap:wrap}
+.pill{padding:1px 7px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:9.5px}
+.pill.on{border-color:var(--accent);color:var(--accent)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:10px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:0;overflow-wrap:anywhere}
+.big{font:500 20px/1.1 var(--mono);text-align:center;font-variant-numeric:tabular-nums;margin:2px 0}
+.center{text-align:center}
+.muted{color:var(--muted)}
+.check{display:flex;gap:5px;align-items:flex-start;font-size:9px;color:var(--ok)}
+.warnbox{border:1px solid color-mix(in srgb,var(--warn) 55%,transparent);background:color-mix(in srgb,var(--warn) 10%,transparent);color:var(--fg);border-radius:6px;padding:4px 6px;font-size:9.5px}
+.hold{position:relative;overflow:hidden}
+.hold i{position:absolute;inset:0 auto 0 0;width:0;background:color-mix(in srgb,var(--accent-fg) 28%,transparent)}
+.hold span{position:relative}
+.thread{display:flex;align-items:center;gap:7px;padding:4px 4px;border-bottom:1px solid var(--line)}
+.thread .t{flex:1;min-width:0}
+.thread .t b{font-weight:500}
+.thread .t p{margin:0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:9.5px}
+.badge{min-width:13px;height:13px;border-radius:7px;background:var(--accent);color:var(--accent-fg);font-size:8px;display:grid;place-items:center;padding:0 3px}
+.chathead{display:flex;align-items:center;gap:6px;padding-bottom:3px;border-bottom:1px solid var(--line)}
+.chathead .sp{flex:1}
+.bub{max-width:80%;padding:4px 7px;border-radius:10px;font-size:10.5px;overflow-wrap:anywhere}
+.bubrow{display:flex;flex-direction:column}
+.bubrow.mine{align-items:flex-end}
+.bubrow.mine .bub{background:var(--sent);color:var(--sent-fg);border-bottom-right-radius:3px}
+.bubrow.theirs .bub{background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:3px}
+.bubrow .meta{font-size:7.5px;color:var(--muted);margin:1px 3px 0}
+.bub.long{background:transparent;border:1px dashed var(--warn);color:var(--fg)}
+.compose{display:flex;gap:4px;align-items:flex-end;position:sticky;bottom:-8px;background:var(--bg);padding-top:3px}
+.compose .inp{flex:1}
+.meter{display:flex;gap:2px;align-items:center;font-size:8px;color:var(--muted);justify-content:flex-end}
+.meter i{width:12px;height:3px;border-radius:2px;background:var(--line)}
+.meter i.on{background:var(--accent)}
+.meter.over i.on{background:var(--bad)}
+.meter.over{color:var(--bad)}
+.node{display:flex;align-items:center;gap:6px;font-size:10px;padding:2px 0}
+.node .nm{flex:1}
+.mono{font-family:var(--mono)}
+.toast{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:var(--fg);color:var(--bg);font-size:9.5px;padding:3px 9px;border-radius:999px;white-space:nowrap;transition:opacity .2s;pointer-events:none}
+.lock{position:absolute;inset:0;background:var(--bg);display:grid;place-items:center;z-index:5}
+.lock .inner{display:grid;gap:8px;justify-items:center}
+.lock .logo{width:34px;height:34px;font-size:17px;margin:0}
+.pins{display:flex;gap:7px}
+.pins i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--accent)}
+.pins i.on{background:var(--accent)}
+</style>
+
+<div class="bench">
+  <section class="stage">
+    <h1>Arcade T-Deck</h1>
+    <p class="sub">The arcade on a LilyGO T-Deck Plus over LoRa: wallet, contacts, messages and the mesh. The screen is drawn at its real 320 × 240 size, in the arcade's own skins.</p>
+    <div class="fit" id="fit">
+      <div class="scaler" id="scaler">
+        <div class="deck">
+          <div class="glass">
+            <div class="scr" id="scr" data-skin="dogecoin-dark" tabindex="0" aria-label="T-Deck screen">
+              <div class="stat" id="stat"></div>
+              <div class="navbar" id="navbar"></div>
+              <div class="view" id="view"></div>
+              <div class="toast" id="toast" style="opacity:0"></div>
+              <div class="lock" id="lock" hidden></div>
+            </div>
+          </div>
+          <div class="ball" id="ball" title="Trackball: click to select"></div>
+          <div class="kb" id="kb"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <aside>
+    <div>
+      <h2>Skin</h2>
+      <div class="chips" id="brands"></div>
+    </div>
+    <div>
+      <h2>Light or dark</h2>
+      <div class="chips" id="modes"></div>
+    </div>
+    <div>
+      <h2>Mesh</h2>
+      <label class="toggle"><input type="checkbox" id="gwToggle" checked> A gateway is in range</label>
+      <label class="toggle"><input type="checkbox" id="bleToggle"> Phone PWA gateway (Bluetooth)</label>
+    </div>
+    <div>
+      <h2>Keys</h2>
+      <ul class="keys">
+        <li><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> trackball</li>
+        <li><kbd>Enter</kbd> trackball click (hold to sign)</li>
+        <li><kbd>Esc</kbd> back</li>
+        <li><kbd>1</kbd>–<kbd>4</kbd> tabs, when not typing</li>
+        <li>Type into fields with your keyboard or the T-Deck keys</li>
+      </ul>
+    </div>
+    <p class="note">Sample data. Balances, @tags and the gateway are the test setup on the GX10 and .25; nothing here talks to a radio.</p>
+  </aside>
+</div>
+
+<script>
+(function(){
+"use strict";
+var scr=document.getElementById('scr'), view=document.getElementById('view');
+var BRANDS=[["dogecoin","Dogecoin","#b8860b"],["pepecoin","Pepecoin","#2f8f3a"],["litecoin","Litecoin","#345d9d"]];
+var store={get:function(k,d){try{var v=localStorage.getItem('tdeck.'+k);return v===null?d:v}catch(e){return d}},
+           set:function(k,v){try{localStorage.setItem('tdeck.'+k,v)}catch(e){}}};
+var S={brand:store.get('brand','dogecoin'),mode:store.get('mode','auto'),tab:'wallet',stack:[],gateway:true,ble:false,
+  focus:0,locked:false,pin:'',
+  send:{to:'',amount:'',chain:0,field:0},
+  draft:'',thread:null,unread:{robin:1}};
+var CHAINS=[
+  {net:'test',label:'Pepecoin',tag:'testnet',sym:'PEP',color:'#2f8f3a',bal:1284.5,pend:0.01,usd:null},
+  {net:'doge',label:'Dogecoin',tag:'dogecoin',sym:'DOGE',color:'#c2a633',bal:42.18,pend:0,usd:'≈ $6.71'},
+  {net:'ltc',label:'Litecoin',tag:'litecoin',sym:'LTC',color:'#345d9d',bal:0.0315,pend:0,usd:'≈ $2.84'}];
+var PEOPLE=[
+  {tag:'robin',name:'Robin',color:'#c0567a',near:true,snr:'7.5'},
+  {tag:'strawberry',name:'Strawberry',color:'#d64545',near:false},
+  {tag:'apple',name:'Apple',color:'#3f9a4a',near:false},
+  {tag:'cinderwalker',name:'Cinder',color:'#7a5bc4',near:true,snr:'3.0'},
+  {tag:'pip',name:'Pip',color:'#2c8ac9',near:false}];
+var ACTS=[
+  {who:'@robin',v:+25,sym:'PEP',when:'2 min',chain:'testnet'},
+  {who:'@strawberry',v:-100,sym:'PEP',when:'1 h',chain:'testnet'},
+  {who:'@apple',v:+3.5,sym:'DOGE',when:'yesterday',chain:'dogecoin'},
+  {who:'@robin',v:-1.25,sym:'PEP',when:'Tue',chain:'testnet',offline:true}];
+var MAIL={
+  robin:[{me:false,t:'are you at the cabin this weekend?',w:'14:02 · direct'},
+         {me:true,t:'yes, Saturday. bring the canoe',w:'14:05 · direct · no fee'},
+         {me:false,long:1204,w:'14:20 · on chain'},
+         {me:false,t:'sent you 25 for gas',w:'14:31 · direct'}],
+  strawberry:[{me:true,t:'node is synced, index looks right',w:'09:12 · on chain · 0.03 PEP'},
+              {me:false,t:'great, mesh picked it up',w:'09:40 · on chain'}],
+  cinderwalker:[{me:false,t:'testing from the ridge, 2 hops',w:'Mon · direct'}]};
+var MAX_SEALED=645, ENVELOPE=134, FRAME_BODY=215;
+
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function fmt(n,d){return n.toLocaleString('en-US',{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?8:d})}
+function person(tag){return PEOPLE.find(function(p){return p.tag===tag})}
+function av(p,sm){return '<span class="av'+(sm?' sm':'')+'" style="background:'+p.color+'">'+esc(p.name[0])+'</span>'}
+
+function skin(){
+  var dark=S.mode==='dark'||(S.mode==='auto'&&isPageDark());
+  scr.dataset.skin=S.brand+'-'+(dark?'dark':'light');
+  var b=BRANDS.find(function(x){return x[0]===S.brand});
+  document.querySelectorAll('#brands button').forEach(function(el){el.setAttribute('aria-pressed',el.dataset.k===S.brand)});
+  document.querySelectorAll('#modes button').forEach(function(el){el.setAttribute('aria-pressed',el.dataset.k===S.mode)});
+  scr.style.setProperty('--logo-letter','"'+b[1][0]+'"');
+}
+function isPageDark(){
+  var t=document.documentElement.getAttribute('data-theme');
+  if(t) return t==='dark';
+  return window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function statBar(){
+  var gw=S.ble?'<span class="gwdot ble"></span>PWA · Bluetooth':S.gateway?'<span class="gwdot"></span>PBR gateway · 0 hops':'<span class="gwdot off"></span>No gateway · mesh only';
+  var bars='<span class="bars">'+[3,5,7,8].map(function(h,i){return '<i style="height:'+h+'px" class="'+((S.gateway||S.ble)&&i<3?'on':(i<1?'on':''))+'"></i>'}).join('')+'</span>';
+  document.getElementById('stat').innerHTML='<span class="me">@bigchief</span><span class="sp"></span>'+gw+bars+'<span>87%</span><span class="bat"><b style="width:87%"></b></span><span>14:32</span>';
+}
+function navBar(){
+  var b=BRANDS.find(function(x){return x[0]===S.brand});
+  var tabs=[['wallet','Wallet'],['contacts','Contacts'],['messages','Messages'],['mesh','Mesh']];
+  document.getElementById('navbar').innerHTML='<span class="logo">'+b[1][0]+'</span>'+tabs.map(function(t,i){
+    var dot=t[0]==='messages'&&Object.keys(S.unread).length?'<span class="dot"></span>':'';
+    return '<a data-tab="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'">'+t[1]+dot+'</a>'}).join('');
+}
+
+/* ---------- screens ---------- */
+var screens={
+  wallet:function(){
+    var h=CHAINS.map(function(c,i){return '<div class="card chain f" data-go="chain" data-i="'+i+'">'+
+      '<span class="coin" style="background:'+c.color+'">'+c.sym[0]+'</span>'+
+      '<span class="lbl">'+c.label+' <span class="tag '+c.tag+'">'+c.tag+'</span></span>'+
+      '<span class="amt">'+fmt(c.bal)+' <span class="muted" style="font-size:9px">'+c.sym+'</span></span>'+
+      '<span class="sub2">'+(c.pend?'+'+fmt(c.pend)+' on its way':'confirmed')+'</span>'+
+      '<span class="fiat">'+(c.usd||'test coins')+'</span></div>'}).join('');
+    h+='<div class="btnrow"><a class="btn f" data-go="send">Send</a><a class="btn ghost f" data-go="receive">Receive</a></div>';
+    h+='<div class="sect">Recent</div><div class="card" style="padding:2px 7px">'+ACTS.map(function(a){
+      return '<div class="act"><span class="who">'+(a.v>0?'From ':'To ')+esc(a.who)+(a.offline?' <span class="tag warn">offline</span>':'')+'</span>'+
+      '<span class="v '+(a.v>0?'in':'out')+'">'+(a.v>0?'+':'−')+fmt(Math.abs(a.v))+' '+a.sym+'</span><span class="when">'+a.when+'</span></div>'}).join('')+'</div>';
+    return h;
+  },
+  receive:function(){
+    var c=CHAINS[0];
+    return back('Receive')+'<div class="card center" style="display:grid;gap:4px">'+
+      '<div class="muted">Your '+c.label+' address <span class="tag '+c.tag+'">'+c.tag+'</span></div>'+
+      '<div class="mono" style="font-size:10.5px;overflow-wrap:anywhere">ncfwppBe8eFBxNbxgFvTgb9xBse8Mgi9Nu</div>'+
+      '<div style="font-size:14px;font-weight:500">@bigchief</div>'+
+      '<div class="muted" style="font-size:9px">Anyone can pay @bigchief from the arcade or another T-Deck.</div></div>'+
+      '<div class="btnrow"><a class="btn ghost f" data-go="pop">Done</a></div>';
+  },
+  send:function(){
+    var s=S.send, c=CHAINS[s.chain];
+    var to='<div class="inp f'+(s.field===0?' focus':'')+'" data-field="0">'+(s.to?'<span>'+esc(s.to)+'</span>':'<span class="ph">@tag or address</span>')+(s.field===0?'<span class="caret"></span>':'')+'</div>';
+    var amt='<div class="inp mono f'+(s.field===1?' focus':'')+'" data-field="1">'+(s.amount?'<span>'+esc(s.amount)+'</span>':'<span class="ph">0.00</span>')+(s.field===1?'<span class="caret"></span>':'')+'<span style="flex:1"></span><span class="muted">'+c.sym+'</span></div>';
+    var q=s.to.replace(/^@/,'').toLowerCase();
+    var sug=PEOPLE.filter(function(p){return !q||p.tag.indexOf(q)===0}).slice(0,4).map(function(p){
+      return '<a class="pill f'+(s.to==='@'+p.tag?' on':'')+'" data-pick="'+p.tag+'">@'+p.tag+'</a>'}).join('');
+    var chains=CHAINS.map(function(x,i){return '<a class="pill f'+(i===s.chain?' on':'')+'" data-chain="'+i+'">'+x.sym+'</a>'}).join('');
+    var ok=s.to&&parseFloat(s.amount)>0&&parseFloat(s.amount)<=c.bal;
+    return back('Send')+'<div class="field"><label>To</label>'+to+'</div><div class="suggest">'+sug+'</div>'+
+      '<div class="field"><label>Amount · '+fmt(c.bal)+' '+c.sym+' available</label>'+amt+'</div><div class="suggest">'+chains+'</div>'+
+      '<div class="btnrow"><a class="btn f'+(ok?'':' dis')+'" data-go="'+(ok?'review':'')+'">Review</a></div>';
+  },
+  review:function(){
+    var s=S.send, c=CHAINS[s.chain], amt=parseFloat(s.amount), fee=c.sym==='PEP'?0.0226:c.sym==='DOGE'?0.0226:0.00001;
+    var p=person(s.to.replace(/^@/,''));
+    var offline=!S.gateway&&!S.ble;
+    var route=offline?'<div class="warnbox"><b>No gateway in range.</b> This payment is signed here and handed to @'+esc(p?p.tag:s.to)+' over the mesh, marked <b>OFFLINE, unconfirmed</b>, until a gateway broadcasts it.</div>':
+      '<div class="check">✓ <span>Checked on this T-Deck: payee, amount and change match, and both signature hashes were worked out here.</span></div>';
+    return back('Review')+'<div class="card" style="display:grid;gap:3px">'+
+      '<div class="center muted">Pay '+(p?av(p,true)+' ':'')+'<b style="color:var(--fg)">'+esc(s.to)+'</b></div>'+
+      '<div class="big">'+fmt(amt)+' <span style="font-size:11px" class="muted">'+c.sym+'</span></div>'+
+      '<dl class="kv"><dt>Address</dt><dd>nKh3Vq…T8pR2a</dd><dt>Fee</dt><dd>'+fmt(fee)+' '+c.sym+'</dd><dt>Change</dt><dd>'+fmt(c.bal-amt-fee)+' '+c.sym+'</dd><dt>Chain</dt><dd><span class="tag '+c.tag+'">'+c.tag+'</span></dd></dl></div>'+route+
+      '<div class="btnrow"><a class="btn ghost f" data-go="pop">Back</a><a class="btn hold f" data-hold="sign"><i></i><span>Hold ⏎ to sign</span></a></div>';
+  },
+  sent:function(){
+    var s=S.send, c=CHAINS[s.chain], offline=!S.gateway&&!S.ble;
+    return '<div class="card center" style="display:grid;gap:5px;margin-top:10px;padding:12px 8px">'+
+      (offline?'<div><span class="tag warn">offline · unconfirmed</span></div><div style="font-size:13px;font-weight:500">Handed to '+esc(s.to)+'</div><div class="muted" style="font-size:9.5px">Both T-Decks keep it in the outbox. The first one to reach a gateway broadcasts it.</div>':
+      '<div><span class="tag ok">sent</span></div><div style="font-size:13px;font-weight:500">'+fmt(parseFloat(s.amount))+' '+c.sym+' to '+esc(s.to)+'</div><div class="mono muted" style="font-size:9px">txid 4e5b3136…0a395ddb</div><div class="muted" style="font-size:9.5px">3 packets · 9.8 s over LoRa</div>')+
+      '</div><div class="btnrow"><a class="btn f" data-go="home">Done</a></div>';
+  },
+  chain:function(){
+    var c=CHAINS[S.chainIdx||0];
+    return back(c.label)+'<div class="card chain"><span class="coin" style="background:'+c.color+'">'+c.sym[0]+'</span><span class="lbl">'+c.label+' <span class="tag '+c.tag+'">'+c.tag+'</span></span><span class="amt">'+fmt(c.bal)+'</span><span class="sub2">'+(c.pend?'+'+fmt(c.pend)+' on its way':'confirmed')+'</span><span class="fiat">'+(c.usd||'test coins')+'</span></div>'+
+      '<div class="card"><dl class="kv"><dt>Coins held</dt><dd>14</dd><dt>Cached for offline</dt><dd>14 · 3 min ago</dd><dt>Shown because</dt><dd>operator allows</dd></dl></div>'+
+      '<div class="btnrow"><a class="btn f" data-go="send" data-chainpick="'+(S.chainIdx||0)+'">Send '+c.sym+'</a></div>';
+  },
+  contacts:function(){
+    var near=PEOPLE.filter(function(p){return p.near}), far=PEOPLE.filter(function(p){return !p.near});
+    function row(p){return '<div class="person f" data-go="person" data-tag="'+p.tag+'">'+av(p)+'<span class="n"><b>@'+p.tag+'</b><span>'+esc(p.name)+(p.near?' · on the mesh, SNR '+p.snr:' · through a gateway')+'</span></span>'+(p.near?'<span class="tag ok">near</span>':'')+'</div>'}
+    return '<div class="sect">On the mesh now</div>'+near.map(row).join('')+'<div class="sect">Everyone</div>'+far.map(row).join('')+
+      '<div class="btnrow"><a class="btn ghost f" data-go="addcontact">Add @tag</a><a class="btn ghost f" data-go="sync">Sync over WiFi</a></div>';
+  },
+  person:function(){
+    var p=person(S.personTag);
+    return back('@'+p.tag)+'<div class="card" style="display:flex;gap:8px;align-items:center">'+av(p)+'<div style="flex:1;min-width:0"><b style="font-weight:500">'+esc(p.name)+'</b><div class="muted" style="font-size:9px">'+(p.near?'On the mesh · node !a0cc2894 · SNR '+p.snr:'Last seen through a gateway')+'</div></div></div>'+
+      '<div class="card"><dl class="kv"><dt>Address</dt><dd>nKh3Vq…T8pR2a</dd><dt>Mail key</dt><dd>4f1c 92ab 07e3</dd><dt>Messages</dt><dd>'+(p.near?'direct, no fee':'on chain, 0.03 PEP')+'</dd></dl></div>'+
+      '<div class="btnrow"><a class="btn f" data-go="chat" data-tag="'+p.tag+'">Message</a><a class="btn ghost f" data-go="send" data-to="'+p.tag+'">Pay</a></div>';
+  },
+  addcontact:function(){
+    return back('Add contact')+'<div class="field"><label>@tag</label><div class="inp focus">@pi<span class="caret"></span></div></div>'+
+      '<div class="card" style="display:flex;gap:8px;align-items:center">'+av(person('pip'))+'<div style="flex:1"><b style="font-weight:500">@pip</b><div class="muted" style="font-size:9px">Found by the gateway · key 9b20 c1f4</div></div></div>'+
+      '<div class="btnrow"><a class="btn f" data-go="pop" data-toast="@pip added">Add @pip</a></div>';
+  },
+  sync:function(){
+    return back('Sync over WiFi')+'<div class="card" style="display:grid;gap:4px"><div><b style="font-weight:500">Home WiFi</b> <span class="tag ok">connected</span></div>'+
+      '<div class="muted" style="font-size:9.5px">Downloads your encrypted arcade mailbox from app.dogecoinarcade.com and opens it on this T-Deck. The gateway never sees your contacts.</div>'+
+      '<dl class="kv"><dt>Contacts</dt><dd>5</dd><dt>Last sync</dt><dd>today 08:10</dd></dl></div>'+
+      '<div class="btnrow"><a class="btn f" data-go="pop" data-toast="5 contacts, up to date">Sync now</a></div>';
+  },
+  messages:function(){
+    var keys=['robin','strawberry','cinderwalker'];
+    return keys.map(function(k){var p=person(k), m=MAIL[k], last=m[m.length-1];
+      return '<div class="thread f" data-go="chat" data-tag="'+k+'">'+av(p)+'<div class="t"><b>@'+k+'</b>'+(p.near?' <span class="tag ok">near</span>':'')+'<p>'+(last.long?'Message too long for LoRa':esc(last.t))+'</p></div>'+(S.unread[k]?'<span class="badge">'+S.unread[k]+'</span>':'<span class="when">'+last.w.split(' ·')[0]+'</span>')+'</div>'}).join('')+
+      '<p class="muted" style="font-size:9px;margin:4px 2px 0">Only arcade messages, only from your contacts. Near contacts get them directly over the mesh.</p>';
+  },
+  chat:function(){
+    var k=S.thread, p=person(k), m=MAIL[k]||[];
+    delete S.unread[k];
+    var bubbles=m.map(function(x){
+      if(x.long) return '<div class="bubrow theirs"><div class="bub long"><b>Message too long for LoRa</b><br><span class="muted">'+fmt(x.long,0)+' bytes. Read it on the arcade.</span></div><div class="meta">'+x.w+'</div></div>';
+      return '<div class="bubrow '+(x.me?'mine':'theirs')+'"><div class="bub">'+esc(x.t)+'</div><div class="meta">'+x.w+'</div></div>'}).join('');
+    var len=new TextEncoder().encode(S.draft).length, sealed=len+ENVELOPE, over=sealed>MAX_SEALED;
+    var parts=p.near?Math.max(1,Math.ceil((len+120)/FRAME_BODY)):Math.max(1,Math.ceil((sealed+40)/FRAME_BODY));
+    var meter='<div class="meter'+(over?' over':'')+'">'+(over?'Too long for LoRa':(p.near?'direct':'on chain')+' · '+Math.min(parts,3)+' of 3 packets · '+(MAX_SEALED-ENVELOPE-len)+' left')+' '+[0,1,2].map(function(i){return '<i class="'+(i<Math.min(parts,3)||over?'on':'')+'"></i>'}).join('')+'</div>';
+    return '<div class="chathead"><a class="f muted" data-go="pop">‹</a>'+av(p,true)+'<b style="font-weight:500">@'+k+'</b><span class="sp"></span>'+(p.near?'<span class="tag ok">direct</span>':'<span class="tag testnet">on chain</span>')+'</div>'+bubbles+
+      '<div class="compose"><div style="flex:1;display:grid;gap:2px"><div class="inp f focus" data-field="draft">'+(S.draft?esc(S.draft):'<span class="ph">Message @'+k+'</span>')+'<span class="caret"></span></div>'+meter+'</div><a class="btn f'+(over||!S.draft?' dis':'')+'" style="flex:none" data-go="'+(over||!S.draft?'':'sendmsg')+'">Send</a></div>';
+  },
+  mesh:function(){
+    var gw=S.ble?'<div><b style="font-weight:500">Phone PWA</b> <span class="tag ble">Bluetooth</span></div><dl class="kv"><dt>Arcade</dt><dd>app.dogecoinarcade.com</dd><dt>Link</dt><dd>BLE, nothing on air</dd></dl>':
+      S.gateway?'<div><b style="font-weight:500">PBR test gateway</b> <span class="tag ok">signed in</span></div><dl class="kv"><dt>Node</dt><dd>!433c8154</dd><dt>Signal</dt><dd>SNR 6.0 · RSSI −58</dd><dt>Hops</dt><dd>0</dd><dt>Round trip</dt><dd>≈ 4 s</dd></dl>':
+      '<div><b style="font-weight:500">No gateway in range</b> <span class="tag warn">mesh only</span></div><div class="muted" style="font-size:9.5px">Messages to near contacts still go directly. Payments are handed over signed and marked offline.</div>';
+    return '<div class="card" style="display:grid;gap:3px">'+gw+'</div>'+
+      '<div class="card"><dl class="kv"><dt>This T-Deck</dt><dd>!970046a4 BigChief</dd><dt>Region</dt><dd>US · LongFast</dd><dt>Nodes heard</dt><dd>43</dd><dt>Channel use</dt><dd>4.0 %</dd><dt>Airtime (mine)</dt><dd>0.04 %</dd></dl></div>'+
+      '<div class="sect">Arcade T-Decks near you</div>'+PEOPLE.filter(function(p){return p.near}).map(function(p){
+        return '<div class="node">'+av(p,true)+'<span class="nm">@'+p.tag+'</span><span class="mono muted">SNR '+p.snr+'</span></div>'}).join('')+
+      '<div class="btnrow"><a class="btn ghost f" data-go="lockme">Lock</a></div>';
+  }
+};
+function back(t){return '<div class="chathead"><a class="f muted" data-go="pop">‹</a><b style="font-weight:500">'+t+'</b></div>'}
+
+function current(){return S.stack.length?S.stack[S.stack.length-1]:S.tab}
+function render(anim){
+  skin(); statBar(); navBar();
+  var name=current();
+  view.innerHTML='<div class="pane'+(anim?' slide-in':'')+'" id="pane">'+screens[name]()+'</div>';
+  var fs=focusables();
+  if(name==='chat'){S.focus=fs.findIndex(function(e){return e.dataset.field==='draft'})}
+  if(S.focus>=fs.length) S.focus=fs.length-1;
+  if(S.focus<0) S.focus=0;
+  paintFocus(true);
+}
+function focusables(){return Array.prototype.slice.call(view.querySelectorAll('.f'))}
+function paintFocus(scroll){
+  var fs=focusables();
+  fs.forEach(function(e,i){e.classList.toggle('focus',i===S.focus)});
+  var el=fs[S.focus], pane=document.getElementById('pane');
+  if(scroll&&el&&pane){var r=el.offsetTop, b=r+el.offsetHeight; if(r<pane.scrollTop) pane.scrollTop=r-6; else if(b>pane.scrollTop+pane.clientHeight) pane.scrollTop=b-pane.clientHeight+6}
+  if(current()==='chat'){var p2=document.getElementById('pane'); if(p2&&scroll===true&&S.focusEnd) p2.scrollTop=p2.scrollHeight}
+}
+function go(name){S.stack.push(name);S.focus=0;render(true)}
+function pop(){if(S.stack.length){S.stack.pop();S.focus=0;render(true)}}
+function home(){S.stack=[];S.tab='wallet';S.focus=0;render(true)}
+function toast(t){var el=document.getElementById('toast');el.textContent=t;el.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(function(){el.style.opacity=0},1600)}
+
+function activate(el){
+  if(!el) return;
+  if(el.dataset.field!==undefined){if(current()==='send'){S.send.field=+el.dataset.field;render()}return}
+  if(el.dataset.pick){S.send.to='@'+el.dataset.pick;S.send.field=1;render();return}
+  if(el.dataset.chain){S.send.chain=+el.dataset.chain;render();return}
+  var g=el.dataset.go;
+  if(!g) return;
+  if(el.dataset.toast) toast(el.dataset.toast);
+  if(g==='pop') return pop();
+  if(g==='home') return home();
+  if(g==='lockme'){S.locked=true;S.pin='';return lock()}
+  if(g==='sendmsg'){var mine=person(S.thread).near;MAIL[S.thread].push({me:true,t:S.draft,w:'now · '+(mine?'direct · no fee':'on chain · 0.03 PEP')});S.draft='';toast(mine?'Delivered directly':'Signed and posted');render();var p=document.getElementById('pane');p.scrollTop=p.scrollHeight;return}
+  if(g==='send'){S.send={to:el.dataset.to?'@'+el.dataset.to:'',amount:'',chain:el.dataset.chainpick?+el.dataset.chainpick:0,field:el.dataset.to?1:0}}
+  if(g==='chain') S.chainIdx=+el.dataset.i;
+  if(g==='person') S.personTag=el.dataset.tag;
+  if(g==='chat'){S.thread=el.dataset.tag;S.draft=''}
+  go(g);
+  if(g==='chat'){var p3=document.getElementById('pane');p3.scrollTop=p3.scrollHeight}
+}
+function typeChar(ch){
+  var name=current();
+  if(S.locked){if(/[0-9]/.test(ch)&&S.pin.length<6){S.pin+=ch;lock();if(S.pin.length===6)setTimeout(function(){S.locked=false;document.getElementById('lock').hidden=true;toast('Unlocked')},250)}return true}
+  if(name==='send'){var f=S.send.field?'amount':'to';
+    if(f==='amount'&&!/[0-9.]/.test(ch)) return true;
+    S.send[f]+=ch;render();return true}
+  if(name==='chat'){S.draft+=ch;render();var p=document.getElementById('pane');p.scrollTop=p.scrollHeight;return true}
+  return false;
+}
+function backspace(){
+  if(S.locked){S.pin=S.pin.slice(0,-1);lock();return true}
+  var name=current();
+  if(name==='send'){var f=S.send.field?'amount':'to';S.send[f]=S.send[f].slice(0,-1);render();return true}
+  if(name==='chat'){S.draft=S.draft.slice(0,-1);render();return true}
+  return false;
+}
+function lock(){
+  var el=document.getElementById('lock');el.hidden=false;
+  var b=BRANDS.find(function(x){return x[0]===S.brand});
+  el.innerHTML='<div class="inner"><span class="logo">'+b[1][0]+'</span><div style="font-weight:500">'+b[1]+'Arcade</div><div class="muted" style="font-size:9.5px">@bigchief · enter your PIN</div><div class="pins">'+[0,1,2,3,4,5].map(function(i){return '<i class="'+(i<S.pin.length?'on':'')+'"></i>'}).join('')+'</div><div class="muted" style="font-size:8.5px">Your 12 words stay on this T-Deck, encrypted with this PIN.</div></div>';
+}
+
+/* hold-to-sign */
+var holdT=null, holdStart=0;
+function holdBegin(){
+  var el=view.querySelector('[data-hold]'); if(!el||holdT) return;
+  holdStart=performance.now();
+  holdT=requestAnimationFrame(function step(t){
+    var p=Math.min(1,(t-holdStart)/1100); el.querySelector('i').style.width=(p*100)+'%';
+    if(p>=1){holdT=null;S.stack.pop();go('sent');var c=CHAINS[S.send.chain];if(S.gateway||S.ble)c.bal-=parseFloat(S.send.amount);
+      ACTS.unshift({who:S.send.to,v:-parseFloat(S.send.amount),sym:c.sym,when:'now',chain:c.tag,offline:!S.gateway&&!S.ble});return}
+    holdT=requestAnimationFrame(step)});
+}
+function holdEnd(){if(holdT){cancelAnimationFrame(holdT);holdT=null;var el=view.querySelector('[data-hold] i');if(el)el.style.width='0'}}
+
+/* input: mouse/touch on the screen */
+view.addEventListener('click',function(e){var el=e.target.closest('.f');if(!el||el.dataset.hold)return;S.focus=focusables().indexOf(el);activate(el)});
+view.addEventListener('pointerdown',function(e){if(e.target.closest('[data-hold]')){e.preventDefault();holdBegin()}});
+window.addEventListener('pointerup',holdEnd);
+document.getElementById('navbar').addEventListener('click',function(e){var a=e.target.closest('a[data-tab]');if(!a)return;S.tab=a.dataset.tab;S.stack=[];S.focus=0;render(true)});
+document.getElementById('ball').addEventListener('click',function(){var el=focusables()[S.focus];if(el&&el.dataset.hold)return;activate(el)});
+document.getElementById('ball').addEventListener('pointerdown',function(){var el=focusables()[S.focus];if(el&&el.dataset.hold)holdBegin()});
+
+/* input: the computer's keyboard as trackball + keys */
+var typing=function(){return S.locked||current()==='send'||current()==='chat'};
+document.addEventListener('keydown',function(e){
+  if(e.target.closest&&e.target.closest('aside'))return;
+  var fs=focusables(), k=e.key;
+  if(k==='ArrowDown'||k==='ArrowRight'){S.focus=Math.min(fs.length-1,S.focus+1);paintFocus(1);e.preventDefault();return}
+  if(k==='ArrowUp'||k==='ArrowLeft'){S.focus=Math.max(0,S.focus-1);paintFocus(1);e.preventDefault();return}
+  if(k==='Enter'){e.preventDefault();var el=fs[S.focus];if(el&&el.dataset.hold){if(!e.repeat)holdBegin();return}
+    if(current()==='chat'&&S.draft){return activate(view.querySelector('[data-go="sendmsg"]'))}
+    activate(el);return}
+  if(k==='Escape'){pop();return}
+  if(k==='Backspace'){if(backspace())e.preventDefault();return}
+  if(!typing()&&/^[1-4]$/.test(k)){S.tab=['wallet','contacts','messages','mesh'][+k-1];S.stack=[];S.focus=0;render(true);return}
+  if(k.length===1&&!e.ctrlKey&&!e.metaKey){if(typeChar(k))e.preventDefault()}
+});
+document.addEventListener('keyup',function(e){if(e.key==='Enter')holdEnd()});
+
+/* the T-Deck keyboard */
+var ROWS=[[['q','#'],['w','1'],['e','2'],['r','3'],['t','('],['y',')'],['u','_'],['i','-'],['o','+'],['p','@']],
+          [['a','*'],['s','4'],['d','5'],['f','6'],['g','/'],['h',':'],['j',';'],['k',"'"],['l','"'],['⌫','',1]],
+          [['alt','',1],['z','7'],['x','8'],['c','9'],['v','?'],['b','!'],['n',','],['m','.'],['$',''],['⏎','',1]],
+          [['⇧','',1],['0',''],['space','',2],['sym','',1],['⇧','',1]]];
+var symMode=false;
+document.getElementById('kb').innerHTML=ROWS.map(function(r){return '<div class="row">'+r.map(function(k){
+  return '<button class="k'+(k[2]===2?' w2':k[2]?' w15':'')+'" data-k="'+esc(k[0])+'" data-s="'+esc(k[1])+'">'+(k[1]?'<small>'+esc(k[1])+'</small>':'')+esc(k[0])+'</button>'}).join('')+'</div>'}).join('');
+document.getElementById('kb').addEventListener('click',function(e){
+  var b=e.target.closest('.k');if(!b)return;var k=b.dataset.k;
+  if(k==='⌫'){backspace();return}
+  if(k==='⏎'){var el=focusables()[S.focus];if(current()==='chat'&&S.draft)activate(view.querySelector('[data-go="sendmsg"]'));else if(el&&!el.dataset.hold)activate(el);return}
+  if(k==='sym'||k==='alt'){symMode=!symMode;toast(symMode?'Symbols on':'Symbols off');return}
+  if(k==='⇧')return;
+  if(k==='space'){typeChar(' ');return}
+  var ch=symMode&&b.dataset.s?b.dataset.s:k;
+  if(!typeChar(ch)&&/^[1-4]$/.test(ch)){S.tab=['wallet','contacts','messages','mesh'][+ch-1];S.stack=[];render(true)}
+});
+
+/* the bench controls */
+document.getElementById('brands').innerHTML=BRANDS.map(function(b){return '<button type="button" data-k="'+b[0]+'"><span class="sw" style="background:'+b[2]+'"></span>'+b[1]+'</button>'}).join('');
+document.getElementById('modes').innerHTML=[['auto','Match page'],['light','Light'],['dark','Dark']].map(function(m){return '<button type="button" data-k="'+m[0]+'">'+m[1]+'</button>'}).join('');
+document.getElementById('brands').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.brand=b.dataset.k;store.set('brand',S.brand);render();if(S.locked)lock()});
+document.getElementById('modes').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.mode=b.dataset.k;store.set('mode',S.mode);render()});
+document.getElementById('gwToggle').addEventListener('change',function(e){S.gateway=e.target.checked;render()});
+document.getElementById('bleToggle').addEventListener('change',function(e){S.ble=e.target.checked;render()});
+if(window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){render()});
+new MutationObserver(function(){render()}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* scale the device to the room it has */
+var fit=document.getElementById('fit'), scaler=document.getElementById('scaler');
+function rescale(){var w=fit.clientWidth, s=Math.min(1.9,w/360);scaler.style.transform='scale('+s+')';fit.style.height=(scaler.offsetHeight*s)+'px'}
+new ResizeObserver(rescale).observe(fit);
+render(); rescale();
+})();
+</script>
